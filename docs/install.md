@@ -120,6 +120,12 @@ Per compilare e generare l'immagine disco installer per macOS (`dist/PiFrame-<ve
 
 ---
 
+## Sessioni omonime e larghezza della barra laterale
+
+Quando sessioni o repository hanno nomi equivalenti (senza distinguere maiuscole e spazi), PiFrame aggiunge alle etichette le cartelle padre necessarie a distinguere i percorsi. Ad esempio, due cartelle `v1/PiFrame` e `v2/PiFrame` vengono mostrate come **v1 / PiFrame** e **v2 / PiFrame**; se anche il padre coincide, vengono inclusi gli antenati successivi. La distinzione resta visibile nella lista, nelle sessioni fissate, in Quick Launch, nel titolo della chat, nel selettore `/resume` e nelle notifiche. I nomi salvati e i campi di rinomina non vengono modificati; sessioni nella stessa cartella possono continuare ad avere lo stesso nome.
+
+Trascina il separatore sul bordo destro del riquadro **Sessioni** per allargarlo o stringerlo. Funziona sia nella barra laterale degli schermi ampi sia nel pannello aperto con **Apri sessioni**. La larghezza viene salvata insieme al layout in `~/.piframe/layout.json`, resta invariata quando collassi e riapri la barra e viene limitata allo spazio disponibile sugli schermi piccoli. Nel browser la scelta dura per l'apertura corrente, come le altre preferenze del layout.
+
 ## Comandi slash di Pi nella chat
 
 Nel composer digita `/` per vedere anche i comandi integrati di Pi, oltre a quelli forniti da estensioni, prompt e skill. `/login` e `/logout` mostrano il selettore dei provider e usano il flusso di autenticazione Pi; i campi per chiavi e token sono mascherati. Le credenziali restano nel deposito Pi e queste richieste sono disponibili solo nell’app locale, non dai client remoti. Gli altri comandi TUI non ancora disponibili via RPC mostrano un avviso e non vengono inviati al modello. Aggiorna PiFrame per ricevere il catalogo e l'instradamento aggiornati.
@@ -198,4 +204,3 @@ Nelle sessioni con cronologia molto estesa (migliaia di messaggi o log di tool v
 1. **Snapshot iniziale leggero**: all'apertura, il demone trasferisce una finestra recente delimitata ai 100 messaggi più recenti, garantendo un caricamento istantaneo e azzerando la pressione sulla memoria RAM e sui buffer WebSocket.
 2. **Caricamento a ritroso on-demand**: in cima alla chat, il pulsante dinamico *"Carica altri messaggi dalla cronologia"* consente di recuperare blocchi incrementali di messaggi precedenti tramite il comando `session.getHistory`, preservando la posizione di scorrimento senza salti visivi.
 3. **Integrità assoluta**: l'intero archivio storico resta conservato su disco in `~/.pi/agent/sessions/` e può essere sfogliato progressivamente a ritroso fino al primissimo messaggio della sessione.
-

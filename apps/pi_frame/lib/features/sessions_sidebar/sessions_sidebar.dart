@@ -13,6 +13,7 @@ import '../workspace/repository_workspace.dart';
 import 'pinned_sessions_provider.dart';
 import 'removed_repos_provider.dart';
 import '../../domain/session/agent_status.dart';
+import '../../domain/session/session_labels.dart';
 import '../../data/update/update_providers.dart';
 
 bool _isSubsession(Map<String, dynamic> session) {
@@ -31,18 +32,7 @@ bool _isSubsession(Map<String, dynamic> session) {
 
 bool _isWorkerSession(Map<String, dynamic> session) => _isSubsession(session);
 
-String _sessionFolder(Map<String, dynamic> session) {
-  final gitRoot = (session['gitRoot'] ?? '').toString().trim();
-  return gitRoot.isNotEmpty ? gitRoot : (session['cwd'] ?? '').toString();
-}
-
-String _folderName(String path) {
-  final segments = path
-      .replaceAll('\\', '/')
-      .split('/')
-      .where((part) => part.isNotEmpty);
-  return segments.isEmpty ? 'Sessioni' : segments.last;
-}
+String _sessionFolder(Map<String, dynamic> session) => sessionFolder(session);
 
 class SessionsSidebar extends ConsumerStatefulWidget {
   final VoidCallback? onSessionSelected;
@@ -215,7 +205,6 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
         : '';
 
     return Container(
-      width: 280,
       decoration: BoxDecoration(
         color: tokens.surface,
       ),
@@ -369,6 +358,12 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
             child: sessionsAsync.when(
               data: (allSessions) {
                 final removedRepos = ref.watch(removedReposProvider);
+                final folderNames = folderDisplayNames(
+                  allSessions
+                      .where((s) => !_isWorkerSession(s))
+                      .map(_sessionFolder),
+                );
+                final sessionNames = ref.watch(sessionDisplayNamesProvider);
 
                 // Apply search and filter
                 final filtered = allSessions.where((s) {
@@ -606,7 +601,7 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
                           ],
                         ),
                         title: Text(
-                          _folderName(folder),
+                          folderNames[folder]!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -778,7 +773,7 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
                               context,
                               ref,
                               folder: folder,
-                              repoName: _folderName(folder),
+                              repoName: folderNames[folder]!,
                               folderSessions: folderSessions,
                             );
                           }
@@ -799,6 +794,8 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
 
                     return _SessionTile(
                       session: s,
+                      displayName:
+                          sessionNames[id] ?? (s['name'] ?? id).toString(),
                       isPinned: isPinned,
                       isPinnedSection: row.isPinnedSession,
                       isSelected: isSelected,
@@ -823,7 +820,7 @@ class _SessionsSidebarState extends ConsumerState<SessionsSidebar> {
                         context,
                         ref,
                         folder: folder,
-                        repoName: _folderName(folder),
+                        repoName: folderNames[folder]!,
                         folderSessions: grouped[folder] ?? [s],
                       ),
                       onDelete: (sId, sName) => deleteSessionWithConfirmation(
@@ -1017,6 +1014,7 @@ class _WorkingDotState extends State<_WorkingDot>
 
 class _SessionTile extends ConsumerWidget {
   final Map<String, dynamic> session;
+  final String displayName;
   final bool isPinned;
   final bool isPinnedSection;
   final bool isSelected;
@@ -1031,6 +1029,7 @@ class _SessionTile extends ConsumerWidget {
 
   const _SessionTile({
     required this.session,
+    required this.displayName,
     required this.isPinned,
     required this.isPinnedSection,
     required this.isSelected,
@@ -1321,7 +1320,7 @@ class _SessionTile extends ConsumerWidget {
         children: [
           Expanded(
             child: Text(
-              name,
+              displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1436,5 +1435,3 @@ class _SessionTile extends ConsumerWidget {
     );
   }
 }
-
-
