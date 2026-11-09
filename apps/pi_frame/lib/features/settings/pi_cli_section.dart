@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pi_frame_theme/pi_frame_theme.dart';
+
 import '../../data/platform/platform_environment.dart';
 
 import 'mcp_servers_dialog.dart';
@@ -34,7 +35,8 @@ const List<PiCommandItem> kBuiltinPiCommands = [
     label: 'Aggiorna Pi CLI',
     command: 'pi update',
     args: ['update'],
-    description: "Aggiorna l'eseguibile di Pi all'ultima versione stabile disponibile.",
+    description:
+        "Aggiorna l'eseguibile di Pi all'ultima versione stabile disponibile.",
     icon: Icons.system_update_alt,
     isPrimary: true,
   ),
@@ -50,14 +52,16 @@ const List<PiCommandItem> kBuiltinPiCommands = [
     label: 'Aggiorna Catalogo Modelli',
     command: 'pi update --models',
     args: ['update', '--models'],
-    description: 'Sincronizza e aggiorna il catalogo dei modelli AI supportati.',
+    description:
+        'Sincronizza e aggiorna il catalogo dei modelli AI supportati.',
     icon: Icons.psychology_outlined,
   ),
   PiCommandItem(
     label: 'Aggiorna Tutto',
     command: 'pi update --all',
     args: ['update', '--all'],
-    description: 'Aggiorna contemporaneamente Pi CLI e tutte le estensioni installate.',
+    description:
+        'Aggiorna contemporaneamente Pi CLI e tutte le estensioni installate.',
     icon: Icons.auto_awesome,
   ),
   PiCommandItem(
@@ -78,7 +82,8 @@ const List<PiCommandItem> kBuiltinPiCommands = [
     label: 'Modelli Disponibili',
     command: 'pi --list-models',
     args: ['--list-models'],
-    description: 'Elenca tutti i modelli LLM disponibili per il coding assistant.',
+    description:
+        'Elenca tutti i modelli LLM disponibili per il coding assistant.',
     icon: Icons.view_list_outlined,
   ),
   PiCommandItem(
@@ -93,11 +98,13 @@ const List<PiCommandItem> kBuiltinPiCommands = [
 class PiCliSection extends StatefulWidget {
   final FrameTokens tokens;
   final VoidCallback? onRecheck;
+  final Future<void> Function()? onPackagesChanged;
 
   const PiCliSection({
     super.key,
     required this.tokens,
     this.onRecheck,
+    this.onPackagesChanged,
   });
 
   @override
@@ -187,9 +194,7 @@ class _PiCliSectionState extends State<PiCliSection> {
 
       _activeProcess = process;
 
-      final stdoutSub = process.stdout
-          .transform(utf8.decoder)
-          .listen((data) {
+      final stdoutDone = process.stdout.transform(utf8.decoder).forEach((data) {
         if (!mounted) return;
         setState(() {
           _consoleOutput += data;
@@ -197,9 +202,7 @@ class _PiCliSectionState extends State<PiCliSection> {
         _scrollToBottom();
       });
 
-      final stderrSub = process.stderr
-          .transform(utf8.decoder)
-          .listen((data) {
+      final stderrDone = process.stderr.transform(utf8.decoder).forEach((data) {
         if (!mounted) return;
         setState(() {
           _consoleOutput += data;
@@ -208,8 +211,7 @@ class _PiCliSectionState extends State<PiCliSection> {
       });
 
       final code = await process.exitCode;
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
+      await Future.wait([stdoutDone, stderrDone]);
 
       if (!mounted) return;
       final duration = _startTime != null
@@ -221,9 +223,14 @@ class _PiCliSectionState extends State<PiCliSection> {
         _isExecuting = false;
         _activeProcess = null;
         _executionDuration = duration;
-        _consoleOutput += '\n[Processo completato con codice $code in ${duration?.inMilliseconds ?? 0}ms]\n';
+        _consoleOutput +=
+            '\n[Processo completato con codice $code in ${duration?.inMilliseconds ?? 0}ms]\n';
       });
       _scrollToBottom();
+      if (args.isNotEmpty &&
+          const {'install', 'update', 'remove'}.contains(args.first)) {
+        await widget.onPackagesChanged?.call();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -303,10 +310,7 @@ class _PiCliSectionState extends State<PiCliSection> {
         const SizedBox(height: 6),
         Text(
           'Esegui comandi e aggiornamenti ufficiali di Pi Coding Agent direttamente da PiFrame.',
-          style: TextStyle(
-            color: tokens.textMuted,
-            fontSize: 13,
-          ),
+          style: TextStyle(color: tokens.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 20),
 
@@ -325,8 +329,7 @@ class _PiCliSectionState extends State<PiCliSection> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            for (final cmd in kBuiltinPiCommands)
-              _buildActionCard(tokens, cmd),
+            for (final cmd in kBuiltinPiCommands) _buildActionCard(tokens, cmd),
           ],
         ),
 
@@ -371,11 +374,9 @@ class _PiCliSectionState extends State<PiCliSection> {
                     fontFamily: tokens.monoFontFamily,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'es. update --force, auth check, mcp login <server>...',
-                    hintStyle: TextStyle(
-                      color: tokens.textMuted,
-                      fontSize: 12,
-                    ),
+                    hintText:
+                        'es. update --force, auth check, mcp login <server>...',
+                    hintStyle: TextStyle(color: tokens.textMuted, fontSize: 12),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -389,7 +390,10 @@ class _PiCliSectionState extends State<PiCliSection> {
                   backgroundColor: tokens.accent,
                   foregroundColor: tokens.surface,
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(tokens.radiusSm),
                   ),
@@ -572,16 +576,14 @@ class _PiCliSectionState extends State<PiCliSection> {
       width: 440,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: item.isPrimary
-            ? tokens.surfaceElevated
-            : tokens.surface,
+        color: item.isPrimary ? tokens.surfaceElevated : tokens.surface,
         borderRadius: BorderRadius.circular(tokens.radiusMd),
         border: Border.all(
           color: isMcpCard
               ? tokens.syntaxFunction.withValues(alpha: 0.5)
               : item.isPrimary
-                  ? tokens.accent.withValues(alpha: 0.5)
-                  : tokens.border,
+              ? tokens.accent.withValues(alpha: 0.5)
+              : tokens.border,
           width: (item.isPrimary || isMcpCard) ? 1.5 : 1.0,
         ),
       ),
@@ -596,8 +598,8 @@ class _PiCliSectionState extends State<PiCliSection> {
                   color: isMcpCard
                       ? tokens.syntaxFunction.withValues(alpha: 0.15)
                       : item.isPrimary
-                          ? tokens.accent.withValues(alpha: 0.15)
-                          : tokens.displaySurface,
+                      ? tokens.accent.withValues(alpha: 0.15)
+                      : tokens.displaySurface,
                   borderRadius: BorderRadius.circular(tokens.radiusSm),
                 ),
                 child: Icon(
@@ -606,8 +608,8 @@ class _PiCliSectionState extends State<PiCliSection> {
                   color: isMcpCard
                       ? tokens.syntaxFunction
                       : item.isPrimary
-                          ? tokens.accent
-                          : tokens.displayText,
+                      ? tokens.accent
+                      : tokens.displayText,
                 ),
               ),
               const SizedBox(width: 10),
@@ -641,9 +643,14 @@ class _PiCliSectionState extends State<PiCliSection> {
                   key: const ValueKey('btn-manage-mcp-servers'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: tokens.syntaxFunction,
-                    side: BorderSide(color: tokens.syntaxFunction.withValues(alpha: 0.5)),
+                    side: BorderSide(
+                      color: tokens.syntaxFunction.withValues(alpha: 0.5),
+                    ),
                     visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(tokens.radiusSm),
                     ),
@@ -662,7 +669,10 @@ class _PiCliSectionState extends State<PiCliSection> {
                       ? tokens.surface
                       : tokens.textPrimary,
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(tokens.radiusSm),
                     side: item.isPrimary
