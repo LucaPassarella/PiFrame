@@ -110,7 +110,9 @@ class _SessionWatcherItemState extends ConsumerState<_SessionWatcherItem> {
           final reqId = req['requestId']?.toString() ?? '';
           if (reqId.isNotEmpty && !_handledUiRequestIds.contains(reqId)) {
             _handledUiRequestIds.add(reqId);
-            final sessionName = next.sessionName ?? widget.sessionId;
+            final sessionName = ref.read(
+              sessionDisplayNameProvider(widget.sessionId),
+            );
             final title = req['title']?.toString() ?? 'Attenzione richiesta';
             final message = req['message']?.toString() ??
                 'L\'agente richiede una tua risposta o scelta.';
@@ -138,7 +140,9 @@ class _SessionWatcherItemState extends ConsumerState<_SessionWatcherItem> {
       if (lastEntry.role == 'assistant' &&
           !_handledEntryIds.contains(lastEntry.id)) {
         _handledEntryIds.add(lastEntry.id);
-        final sessionName = next.sessionName ?? widget.sessionId;
+        final sessionName = ref.read(
+          sessionDisplayNameProvider(widget.sessionId),
+        );
         final rawText = lastEntry.text.trim();
         final preview = rawText.isNotEmpty
             ? (rawText.length > 120

@@ -29,6 +29,20 @@ void main() {
       expect(strings.languageSectionTitle, "Lingua dell'Applicazione");
       expect(strings.openThemeEditorBtn, 'Editor Temi / Personalizza Tema');
       expect(strings.updateNoticeTitle, 'Aggiornamenti Rilevati');
+      expect(strings.updateAllPackages, 'Aggiorna tutto');
+      expect(
+        strings.updateAllPackagesMessage(2),
+        contains('2 pacchetti utente con aggiornamenti disponibili'),
+      );
+      expect(
+        strings.packageUpdateSummary(1, 2, 3),
+        contains('Già aggiornati: 2.'),
+      );
+      expect(
+        strings.packageUpdateUnavailable('1.2.0', 'Windows'),
+        contains('non compatibile'),
+      );
+      expect(strings.packageUpdateNotVerified, contains('Riavvia il daemon'));
     });
 
     test('AppStrings provides correct English translations', () {
@@ -40,6 +54,23 @@ void main() {
       expect(strings.languageSectionTitle, 'Application Language');
       expect(strings.openThemeEditorBtn, 'Theme Editor / Customize Theme');
       expect(strings.updateNoticeTitle, 'Updates Available');
+      expect(strings.updateAllPackages, 'Update all');
+      expect(
+        strings.updateAllPackagesMessage(2),
+        contains('2 user packages with available updates'),
+      );
+      expect(
+        strings.packageUpdateSummary(1, 2, 3),
+        contains('Already up to date: 2.'),
+      );
+      expect(
+        strings.packageUpdateUnavailable('1.2.0', 'Windows'),
+        contains('not compatible'),
+      );
+      expect(
+        strings.packageUpdateNotVerified,
+        contains('Restart the updated daemon'),
+      );
     });
 
     test('AppLanguageNotifier updates state', () {

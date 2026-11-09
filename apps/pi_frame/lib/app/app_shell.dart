@@ -37,6 +37,7 @@ import '../features/updates/startup_update_banner.dart';
 import '../features/updates/startup_updates_watcher.dart';
 import '../data/window/window_state_service.dart';
 import '../data/layout/layout_store.dart';
+import '../domain/session/session_labels.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -70,6 +71,11 @@ class _AppShellState extends ConsumerState<AppShell>
     WorkspacePane.git: 24,
   };
   bool _sidebarCollapsed = false;
+  static const _defaultSidebarWidth = 280.0;
+  static const _minimumSidebarWidth = 220.0;
+  static const _maximumSidebarWidth = 560.0;
+  static const _sidebarDividerWidth = 8.0;
+  double _sidebarWidth = _defaultSidebarWidth;
   bool? _preReviewSidebarCollapsed;
   Map<WorkspacePane, bool>? _preReviewPaneVisibility;
   Map<WorkspacePane, double>? _preReviewPaneWeights;
@@ -120,6 +126,7 @@ class _AppShellState extends ConsumerState<AppShell>
         for (final pane in WorkspacePane.values) pane.name: _paneVisibility[pane] ?? true,
       },
       'sidebarCollapsed': _sidebarCollapsed,
+      'sidebarWidth': _sidebarWidth,
     });
   }
 
@@ -135,6 +142,12 @@ class _AppShellState extends ConsumerState<AppShell>
     }
     if (saved['sidebarCollapsed'] is bool) {
       _sidebarCollapsed = saved['sidebarCollapsed'] as bool;
+    }
+    final sidebarWidth = saved['sidebarWidth'];
+    if (sidebarWidth is num && sidebarWidth.isFinite) {
+      _sidebarWidth = sidebarWidth
+          .clamp(_minimumSidebarWidth, _maximumSidebarWidth)
+          .toDouble();
     }
     if (!_paneVisibility.containsValue(true)) {
       _paneVisibility[WorkspacePane.chat] = true;
@@ -331,10 +344,9 @@ class _AppShellState extends ConsumerState<AppShell>
         key: _scaffoldKey,
         backgroundColor: tokens.background,
         drawer: Drawer(
-          width: 280,
-          child: SessionsSidebar(
-            onSessionSelected: () => _scaffoldKey.currentState?.closeDrawer(),
-          ),
+          width: _effectiveSidebarWidth(width, inDrawer: true) +
+              _sidebarDividerWidth,
+          child: _sessionsSidebar(width, inDrawer: true),
         ),
         endDrawer: activeId == null
             ? null
@@ -631,17 +643,7 @@ class _AppShellState extends ConsumerState<AppShell>
                               if (showSessionRail)
                                 _sidebarCollapsed
                                     ? _collapsedSidebarStrip(tokens)
-                                    : _bentoPane(
-                                        SizedBox(
-                                          width: 280,
-                                          child: SessionsSidebar(
-                                            onCollapse: () {
-                                              setState(() => _sidebarCollapsed = true);
-                                              _persistLayout();
-                                            },
-                                          ),
-                                        ),
-                                      ),
+                                    : _sessionsSidebar(width),
                               Expanded(
                                 child: activeId == null
                                     ? RepaintBoundary(child: workArea())
@@ -933,6 +935,129 @@ class _AppShellState extends ConsumerState<AppShell>
     );
   }
 
+  double _effectiveSidebarWidth(double windowWidth, {bool inDrawer = false}) {
+    return _clampSidebarWidth(_sidebarWidth, windowWidth, inDrawer: inDrawer);
+  }
+
+  double _clampSidebarWidth(
+    double value,
+    double windowWidth, {
+    bool inDrawer = false,
+  }) {
+    final maximum = inDrawer
+        ? (windowWidth - 32).clamp(0.0, _maximumSidebarWidth).toDouble()
+        : _maximumSidebarWidth;
+    final minimum = maximum < _minimumSidebarWidth
+        ? maximum
+        : _minimumSidebarWidth;
+    return value.clamp(minimum, maximum).toDouble();
+  }
+
+  void _resizeSidebar(
+    double delta,
+    double windowWidth, {
+    required bool inDrawer,
+  }) {
+    final current = _effectiveSidebarWidth(windowWidth, inDrawer: inDrawer);
+    setState(() {
+      _sidebarWidth = _clampSidebarWidth(
+        current + delta,
+        windowWidth,
+        inDrawer: inDrawer,
+      );
+    });
+  }
+
+  void _finishSidebarResize() {
+    ref.read(paneDraggingProvider.notifier).state = false;
+    _persistLayout();
+  }
+
+  Widget _sessionsSidebar(double windowWidth, {bool inDrawer = false}) {
+    final sidebarWidth = _effectiveSidebarWidth(
+      windowWidth,
+      inDrawer: inDrawer,
+    );
+    final increasedWidth = _clampSidebarWidth(
+      sidebarWidth + 20,
+      windowWidth,
+      inDrawer: inDrawer,
+    );
+    final decreasedWidth = _clampSidebarWidth(
+      sidebarWidth - 20,
+      windowWidth,
+      inDrawer: inDrawer,
+    );
+    final sidebar = SizedBox(
+      key: const ValueKey('sessions-sidebar-pane'),
+      width: sidebarWidth,
+      child: SessionsSidebar(
+        onSessionSelected: inDrawer
+            ? () => _scaffoldKey.currentState?.closeDrawer()
+            : null,
+        onCollapse: inDrawer
+            ? null
+            : () {
+                setState(() => _sidebarCollapsed = true);
+                _persistLayout();
+              },
+      ),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        inDrawer ? sidebar : _bentoPane(sidebar),
+        MouseRegion(
+          key: const ValueKey('sessions-sidebar-divider'),
+          cursor: SystemMouseCursors.resizeLeftRight,
+          child: Semantics(
+            label: 'Larghezza barra sessioni',
+            value: '${sidebarWidth.round()} pixel',
+            increasedValue: '${increasedWidth.round()} pixel',
+            decreasedValue: '${decreasedWidth.round()} pixel',
+            onIncrease: increasedWidth > sidebarWidth
+                ? () {
+                    _resizeSidebar(20, windowWidth, inDrawer: inDrawer);
+                    _persistLayout();
+                  }
+                : null,
+            onDecrease: decreasedWidth < sidebarWidth
+                ? () {
+                    _resizeSidebar(-20, windowWidth, inDrawer: inDrawer);
+                    _persistLayout();
+                  }
+                : null,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) =>
+                  ref.read(paneDraggingProvider.notifier).state = true,
+              onHorizontalDragUpdate: (details) => _resizeSidebar(
+                details.delta.dx,
+                windowWidth,
+                inDrawer: inDrawer,
+              ),
+              onHorizontalDragEnd: (_) => _finishSidebarResize(),
+              onHorizontalDragCancel: _finishSidebarResize,
+              child: Tooltip(
+                message: 'Trascina per ridimensionare la barra sessioni',
+                child: SizedBox(
+                  width: _sidebarDividerWidth,
+                  child: Center(
+                    child: Container(
+                      width: 1,
+                      height: 40,
+                      color: context.tokens.borderStrong,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _collapsedSidebarStrip(FrameTokens tokens) {
     return RepaintBoundary(
       child: Padding(
@@ -1215,8 +1340,7 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   String _sessionFolder(Map<String, dynamic> session) {
-    final gitRoot = (session['gitRoot'] ?? '').toString().trim();
-    return gitRoot.isNotEmpty ? gitRoot : (session['cwd'] ?? '').toString();
+    return sessionFolder(session);
   }
 
   int _sessionTimestamp(Map<String, dynamic> s) {
@@ -1291,7 +1415,8 @@ class _AppShellState extends ConsumerState<AppShell>
     Map<String, dynamic> session,
   ) {
     final id = (session['id'] ?? '').toString();
-    final name = (session['name'] ?? id).toString();
+    final name = ref.watch(sessionDisplayNamesProvider)[id] ??
+        (session['name'] ?? id).toString();
     final folder = _sessionFolder(session);
     final folderDisplay = folder.isNotEmpty ? folder : 'Nessuna cartella';
 

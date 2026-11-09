@@ -120,6 +120,20 @@ Per compilare e generare l'immagine disco installer per macOS (`dist/PiFrame-<ve
 
 ---
 
+## Sessioni omonime e larghezza della barra laterale
+
+Quando sessioni o repository hanno nomi equivalenti (senza distinguere maiuscole e spazi), PiFrame aggiunge alle etichette le cartelle padre necessarie a distinguere i percorsi. Ad esempio, due cartelle `v1/PiFrame` e `v2/PiFrame` vengono mostrate come **v1 / PiFrame** e **v2 / PiFrame**; se anche il padre coincide, vengono inclusi gli antenati successivi. La distinzione resta visibile nella lista, nelle sessioni fissate, in Quick Launch, nel titolo della chat, nel selettore `/resume` e nelle notifiche. I nomi salvati e i campi di rinomina non vengono modificati; sessioni nella stessa cartella possono continuare ad avere lo stesso nome.
+
+Trascina il separatore sul bordo destro del riquadro **Sessioni** per allargarlo o stringerlo. Funziona sia nella barra laterale degli schermi ampi sia nel pannello aperto con **Apri sessioni**. La larghezza viene salvata insieme al layout in `~/.piframe/layout.json`, resta invariata quando collassi e riapri la barra e viene limitata allo spazio disponibile sugli schermi piccoli. Nel browser la scelta dura per l'apertura corrente, come le altre preferenze del layout.
+
+## Aggiornamento di tutti i pacchetti Pi
+
+In **Impostazioni → Pacchetti**, i pulsanti di aggiornamento sono abilitati solo quando è stata verificata una versione più recente installabile. **Aggiorna tutto** si abilita se almeno un pacchetto soddisfa questa condizione e aggiorna in sequenza soltanto quelli con aggiornamenti disponibili, usando il package manager Pi. Pacchetti già aggiornati, versioni bloccate, aggiornamenti incompatibili e versioni non verificate restano esclusi. Dopo la conferma viene mostrato l'avanzamento; i pulsanti di aggiornamento, rimozione e blocco versione restano disabilitati fino alla conclusione. Se un pacchetto non si aggiorna, PiFrame prosegue con gli altri e mostra il riepilogo e gli errori dei pacchetti non riusciti. La lista viene verificata all'apertura e ricaricata al termine: i pulsanti tornano disabilitati quando non rimangono aggiornamenti disponibili. Riavvia Pi per caricare il codice aggiornato. I pacchetti di progetto non vengono modificati.
+
+Il riepilogo distingue gli aggiornamenti realmente installati dai pacchetti già aggiornati e dalle versioni bloccate. Per i pacchetti npm il daemon verifica la versione sul disco rispetto alla versione prevista dalla sorgente configurata: senza versione usa `latest`, con un intervallo o un tag mantiene quel vincolo. Un comando concluso con codice zero ma una versione ancora precedente viene segnalato come errore. Aggiornamento, rimozione e blocco versione ricontrollano anche l'avviso iniziale, senza lasciare dati obsoleti. Su Windows viene riconosciuto anche il runtime standalone ufficiale in `%LOCALAPPDATA%\pi-node\current`.
+
+Prima di proporre una versione npm più recente viene verificata la compatibilità di installazione, comprese le dipendenze obbligatorie, con un dry run senza script. Versioni non supportate dal sistema operativo non generano l'avviso di aggiornamento disponibile; il motivo resta visibile nella pagina dei pacchetti. Anche i comandi di installazione, aggiornamento e rimozione della scheda **Pi CLI** ricontrollano la lista e l'avviso dopo la conclusione.
+
 ## Comandi slash di Pi nella chat
 
 Nel composer digita `/` per vedere anche i comandi integrati di Pi, oltre a quelli forniti da estensioni, prompt e skill. `/login` e `/logout` mostrano il selettore dei provider e usano il flusso di autenticazione Pi; i campi per chiavi e token sono mascherati. Le credenziali restano nel deposito Pi e queste richieste sono disponibili solo nell’app locale, non dai client remoti. Gli altri comandi TUI non ancora disponibili via RPC mostrano un avviso e non vengono inviati al modello. Aggiorna PiFrame per ricevere il catalogo e l'instradamento aggiornati.
@@ -198,4 +212,3 @@ Nelle sessioni con cronologia molto estesa (migliaia di messaggi o log di tool v
 1. **Snapshot iniziale leggero**: all'apertura, il demone trasferisce una finestra recente delimitata ai 100 messaggi più recenti, garantendo un caricamento istantaneo e azzerando la pressione sulla memoria RAM e sui buffer WebSocket.
 2. **Caricamento a ritroso on-demand**: in cima alla chat, il pulsante dinamico *"Carica altri messaggi dalla cronologia"* consente di recuperare blocchi incrementali di messaggi precedenti tramite il comando `session.getHistory`, preservando la posizione di scorrimento senza salti visivi.
 3. **Integrità assoluta**: l'intero archivio storico resta conservato su disco in `~/.pi/agent/sessions/` e può essere sfogliato progressivamente a ritroso fino al primissimo messaggio della sessione.
-
